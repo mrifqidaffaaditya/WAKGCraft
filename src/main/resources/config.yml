@@ -1,0 +1,161 @@
+# =====================================================
+#                 WAKGCraft Configuration
+#              (The DiscordSRV of WhatsApp!)
+# =====================================================
+#
+# WA-AKG API Gateway -> https://wa-akg.aikeigroup.net/
+# Full Documentation -> README.md
+# =====================================================
+
+# =====================================================
+# WA-AKG API CONNECTION
+# =====================================================
+# Connect your plugin to the WA-AKG API Gateway.
+# Get your API Key from: WA-AKG Dashboard -> Sessions -> API Keys
+
+wa-akg:
+  api-url: "https://wa-akg.aikeigroup.net/api"
+  api-key: "YOUR_API_KEY_HERE"
+  session-id: "session-01"
+
+# =====================================================
+# PLUGIN MESSAGES (In-Game Messages)
+# =====================================================
+# These messages are shown IN-GAME to players.
+# Supports Minecraft color codes using '&' (e.g., &a = green, &c = red).
+#
+# Available Placeholders:
+#   %target%  - The JID the message was sent to (for send command)
+#   %error%   - Error message details (for failed sends)
+
+plugin-messages:
+  prefix: "&7[&aWAKGCraft&7] &r"
+  reloaded: "&aConfiguration has been successfully reloaded!"
+  no-permission: "&cYou don't have permission to use this command."
+  usage-send: "&cUsage: /wakg send <number> <message>"
+  usage-report: "&cUsage: /wakg report <player> <reason>"
+  report-success: "&aYour report has been sent directly to the server admins!"
+  sent-success: "&aMessage sent successfully to %target%!"
+  sent-failed: "&cFailed to send message: %error%"
+
+# =====================================================
+# CHANNELS (Two-Way Linking)
+# =====================================================
+# This maps Minecraft concepts to WhatsApp Groups or Numbers.
+#
+# How to find your JID:
+#   Group JID  : 120363xxxxxx@g.us      (visible on WA-AKG Dashboard -> Chats)
+#   Personal JID: 6281xxxxxx@s.whatsapp.net (country code + number)
+
+Channels:
+  # The main chat channel. In-game chat goes here, and messages from here go in-game.
+  # Also used for server-start, server-stop, player-join, player-quit, etc.
+  # Leave empty ("") to disable all two-way chat features.
+  GlobalChat: "ENTER_GLOBAL_CHAT_JID_HERE"
+
+  # Admin Alert Channel. Used for highly sensitive alerts.
+  # When a player types /wakg report, it goes directly to this WhatsApp Number/Group!
+  AdminAlerts: "ENTER_ADMIN_GROUP_JID_HERE"
+
+# =====================================================
+# MINECRAFT TO WHATSAPP (Minecraft -> WA)
+# =====================================================
+# Messages sent FROM Minecraft TO WhatsApp.
+# All messages below are sent to the Channels.GlobalChat JID.
+#
+# ---- GLOBAL PLACEHOLDERS (Available in ALL formats below) ----
+#   %nl%              - New line (line break) in WhatsApp message
+#   %newline%          - Same as %nl%
+#   %online_count%     - Number of online players (NOT YET - use PlaceholderAPI)
+#   %max_players%      - Max server slots (NOT YET - use PlaceholderAPI)
+#
+# ---- PlaceholderAPI SUPPORT ----
+#   Any PlaceholderAPI placeholder is supported!
+#   Example: %server_online%, %server_tps%, %player_health%, etc.
+#   Install PlaceholderAPI from: https://www.spigotmc.org/resources/placeholderapi.6245/
+#
+# ---- WhatsApp Text Formatting ----
+#   *bold*             - Bold text
+#   _italic_           - Italic text
+#   ~strikethrough~    - Strikethrough text
+#   ```monospace```    - Monospace text
+
+minecraft-to-whatsapp:
+
+  # --- SERVER LIFECYCLE ---
+  server-start:
+    enabled: true
+    # Placeholders: %nl%, %newline%, PlaceholderAPI
+    format: "🚀 *Server Started!*%nl%The Minecraft server is now online."
+  server-stop:
+    enabled: true
+    # Placeholders: %nl%, %newline%, PlaceholderAPI
+    format: "🛑 *Server Stopped!*%nl%The Minecraft server has gone offline."
+
+  # --- PLAYER EVENTS ---
+  chat:
+    enabled: true
+    # Placeholders: %player_name%, %message%, %nl%, %newline%, PlaceholderAPI
+    format: "💬 *[%player_name%]*: %message%"
+  player-join:
+    enabled: true
+    # Placeholders: %player_name%, %nl%, %newline%, PlaceholderAPI
+    format: "🟢 *%player_name%* has joined the server!"
+  player-quit:
+    enabled: true
+    # Placeholders: %player_name%, %nl%, %newline%, PlaceholderAPI
+    format: "🔴 *%player_name%* has left the server."
+  player-death:
+    enabled: true
+    # Placeholders: %player_name%, %death_message%, %nl%, %newline%, PlaceholderAPI
+    format: "💀 *%player_name%* just died: %death_message%"
+  advancement:
+    enabled: true
+    # Placeholders: %player_name%, %advancement%, %nl%, %newline%, PlaceholderAPI
+    format: "🏆 *%player_name%* has made the advancement [%advancement%]!"
+
+# =====================================================
+# WHATSAPP TO MINECRAFT (WA -> Minecraft)
+# =====================================================
+# Messages sent FROM WhatsApp TO Minecraft.
+#
+# How to Setup Webhook:
+#   1. Ensure the webhook port (default 8080) is PORT FORWARDED or accessible.
+#   2. Go to your WA-AKG Dashboard -> Sessions -> Webhooks.
+#   3. Add Webhook URL: http://YOUR_SERVER_IP:8080/webhook
+#   4. Now, any WhatsApp message sent to the GlobalChat channel will appear in-game!
+
+whatsapp-to-minecraft:
+  webhook:
+    enabled: true
+    # The port for the built-in HTTP Webhook Server.
+    # Make sure this port is open/forwarded on your server.
+    port: 8080
+    # Enable debug mode to see raw webhook payloads in the server console.
+    # Useful for troubleshooting if messages are not appearing in-game.
+    debug: false
+
+  # Prefix needed to run commands from WhatsApp (e.g., !list, !status)
+  command-prefix: "!"
+
+  # Format for messages arriving from WhatsApp into Minecraft.
+  # Supports Minecraft color codes using '&'.
+  #
+  # Available Placeholders:
+  #   %wa_name%   - The sender's WhatsApp display name (push name)
+  #   %message%   - The message content
+  chat-format: "&7[&aWhatsApp&7] &f%wa_name%&8: &7%message%"
+
+  # ---- ADMIN FEATURES ----
+  # Administrators who can run powerful commands from WhatsApp.
+  # Add your personal WhatsApp JID here.
+  #
+  # Built-in Admin WhatsApp Commands:
+  #   !execute <command>              - Run any console command (e.g., !execute say hello)
+  #   !status                         - View Server RAM, TPS, and Player Count
+  #   !whitelist add/remove <name>    - Manage whitelist directly from WhatsApp
+  #   !list                           - View online players (available to everyone)
+  #
+  # Custom commands can be added in commands.yml!
+  admin-jids:
+    - "ENTER_YOUR_PERSONAL_JID_HERE"

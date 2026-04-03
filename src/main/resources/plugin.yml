@@ -1,0 +1,15 @@
+name: WAKGCraft
+version: '${project.version}'
+main: net.aikeigroup.wakgcraft.WAKGCraft
+api-version: '1.21'
+depend: [PlaceholderAPI]
+description: A plugin to integrate WA-AKG with Minecraft!
+authors: [KeiDev, AI]
+commands:
+  wakgcraft:
+    description: Main command for WAKGCraft
+    aliases: [wakg]
+    permission: wakgcraft.admin
+    usage: |
+      /wakgcraft reload - Reload configurations
+      /wakgcraft send <number> <message> - Sends text to WA

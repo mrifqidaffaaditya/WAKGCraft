@@ -1,0 +1,222 @@
+# =====================================================
+#             WAKGCraft Custom Commands
+#             Make Your Own Commands!
+# =====================================================
+#
+# This file lets you create custom commands for BOTH sides:
+#   1. Minecraft Commands  - Players type /command in-game -> sends to WhatsApp
+#   2. WhatsApp Commands   - Users type !command in WhatsApp -> executes in MC
+#
+# =====================================================
+# CHANNEL ROUTING
+# =====================================================
+#
+# Instead of hardcoding JIDs, commands reference CHANNEL NAMES from config.yml.
+#
+# In config.yml you define:
+#   Channels:
+#     GlobalChat: "120363xxxxxx@g.us"
+#     AdminAlerts: "6281xxxxxx@s.whatsapp.net"
+#     StaffChat: "120363yyyyyy@g.us"
+#
+# Then in commands.yml you use those names:
+#
+# ---- MC -> WA Commands ----
+#   target-channels:
+#     - "GlobalChat"       # Send to specific channel
+#     - "AdminAlerts"      # Send to multiple channels!
+#   OR:
+#     - "global"           # Send to ALL channels in config.yml
+#
+# ---- WA -> MC Commands ----
+#   channels:
+#     - "GlobalChat"       # Only respond when sent FROM this channel
+#     - "AdminAlerts"      # Multiple channels to listen from
+#   OR:
+#     - "global"           # Respond from ANY channel
+#   OR:
+#     (leave empty)        # Respond from ANY source (DMs too)
+#
+# =====================================================
+# AVAILABLE PLACEHOLDERS
+# =====================================================
+#
+# ---- ARGUMENT PLACEHOLDERS (for both MC and WA commands) ----
+#
+#   %args%       - ALL text/words after the command.
+#                  If used WITH positional args (e.g., %args-1% %args%),
+#                  it captures everything AFTER the last positional arg.
+#                  NOTE: %args% must NOT come before %args-N% in the format.
+#
+#   %args-1%     - The 1st word after the command
+#   %args-2%     - The 2nd word after the command
+#   %args-3%     - The 3rd word after the command
+#   ... and so on.
+#
+# ---- PLAYER PLACEHOLDERS (Minecraft commands only) ----
+#
+#   %player_name%  - The player who executed the command
+#   %player_xxx%   - Any PlaceholderAPI placeholder (requires PlaceholderAPI)
+#
+# ---- OTHER PLACEHOLDERS ----
+#
+#   %nl%           - New line (line break)
+#   %newline%      - Same as %nl%
+#
+# =====================================================
+# ARGUMENT EXAMPLES
+# =====================================================
+#
+# Example 1: Only %args% (captures everything)
+#   format: "Message from %player_name%: %args%"
+#   /command hello world   ->   "Message from Steve: hello world"
+#
+# Example 2: Positional args only
+#   format: "Player: %args-1%, Reason: %args-2%"
+#   /command Steve griefing   ->   "Player: Steve, Reason: griefing"
+#
+# Example 3: Positional + %args% (rest of text)
+#   format: "Target: %args-1%, Details: %args%"
+#   /command Steve he was breaking blocks   ->   "Target: Steve, Details: he was breaking blocks"
+#
+# ⚠️ IMPORTANT: %args% must come AFTER %args-N%, never before!
+#
+# =====================================================
+
+# =========================================================================
+# MINECRAFT COMMANDS (In-Game -> WhatsApp)
+# =========================================================================
+# Players type these commands in-game (e.g., /helpwa, /reportwa)
+# Commands are AUTO-REGISTERED to Minecraft at server start!
+#
+# Available fields:
+#   command          - Command name (without /). Players type /command in-game.
+#   target-channels  - List of channel names from config.yml. Use ["global"] for all.
+#   format           - Message format sent to WhatsApp.
+#   execute-console  - (Optional) Console command to run.
+#   permission       - (Optional) Bukkit permission. Leave "" for no restriction.
+#   description      - Short description shown in /wakg help.
+#   usage            - Argument structure hint (e.g., "<player> <reason>").
+#   example          - Example usage shown when wrong args.
+#   response-message - In-game feedback message shown to the player.
+#   error-message    - (Optional) Custom error message when wrong args.
+# =========================================================================
+
+minecraft-commands:
+
+  # --- Help Request (sends to AdminAlerts) ---
+  helpwa:
+    command: "helpwa"
+    target-channels:
+      - "AdminAlerts"
+    format: "🚨 *%player_name%* is calling for help from the server!"
+    permission: ""
+    description: "Call for help from admins"
+    usage: ""
+    example: ""
+    response-message: "&aYour help request has been sent to the admins on WhatsApp!"
+
+  # --- Report (sends to AdminAlerts) ---
+  reportwa:
+    command: "reportwa"
+    target-channels:
+      - "AdminAlerts"
+    format: "🚨 *PLAYER REPORT*%nl%👤 Reporter: *%player_name%*%nl%🎯 Suspect: *%args-1%*%nl%📝 Reason: %args%"
+    permission: ""
+    description: "Report a player to admins"
+    usage: "<player> <reason>"
+    example: "Steve griefing in spawn"
+    response-message: "&aYour report has been sent to the admins!"
+    error-message: "&c❌ Wrong usage! &7Use: &f/reportwa <player> <reason>"
+
+  # --- Broadcast to ALL channels (uses "global") ---
+  wabroadcast:
+    command: "wabroadcast"
+    target-channels:
+      - "global"
+    format: "📢 *[Server Broadcast]*%nl%%args%"
+    permission: "wakgcraft.admin"
+    description: "Broadcast message to all WhatsApp channels"
+    usage: "<message>"
+    example: "Server restarting in 5 minutes!"
+    response-message: "&aBroadcast sent to all WhatsApp channels!"
+
+  # --- Send to multiple specific channels ---
+  wagive:
+    command: "wagive"
+    target-channels:
+      - "GlobalChat"
+      - "AdminAlerts"
+    format: "🎁 *%player_name%* gave *%args-3%x %args-2%* to *%args-1%*"
+    execute-console: "give %args-1% %args-2% %args-3%"
+    permission: "wakgcraft.admin"
+    description: "Give items to a player"
+    usage: "<player> <item> <amount>"
+    example: "Steve diamond 64"
+    response-message: "&aGiving %args-3%x %args-2% to %args-1%!"
+
+# =========================================================================
+# WHATSAPP COMMANDS (WhatsApp -> Minecraft)
+# =========================================================================
+# Users type these commands in WhatsApp (e.g., !ping, !giveapple)
+# The prefix (default: !) is configured in config.yml.
+#
+# Available fields:
+#   command          - Trigger word (without prefix). Users type !command.
+#   channels         - List of channel names this command listens from.
+#                      Use ["global"] for any configured channel.
+#                      Leave empty ([]) to listen from ANY source (including DMs).
+#   admin-only       - If true, only admin JIDs can use.
+#   reply            - Reply message sent back to WhatsApp.
+#   execute-console  - (Optional) Console command to run.
+#   description      - Short description for !help.
+#   usage            - Argument structure hint.
+#   example          - Example args for error messages.
+# =========================================================================
+
+whatsapp-commands:
+
+  # --- Ping (works from any source) ---
+  ping:
+    command: "ping"
+    channels: []
+    admin-only: false
+    description: "Check if the bridge is active"
+    usage: ""
+    reply: "🏓 Pong! The WAKGCraft bridge is active."
+
+  # --- Give Apple (only from GlobalChat) ---
+  giveapple:
+    command: "giveapple"
+    channels:
+      - "GlobalChat"
+    admin-only: true
+    description: "Give 64 apples to a player"
+    usage: "<player>"
+    example: "Steve"
+    execute-console: "give %args-1% apple 64"
+    reply: "🍎 Giving 64 apples to *%args-1%*."
+
+  # --- Say (from all configured channels) ---
+  say:
+    command: "say"
+    channels:
+      - "global"
+    admin-only: true
+    description: "Broadcast a message to the server"
+    usage: "<message>"
+    example: "Hello everyone!"
+    execute-console: "say %args%"
+    reply: "📢 Message broadcasted: %args%"
+
+  # --- Teleport (from AdminAlerts only) ---
+  tp:
+    command: "tp"
+    channels:
+      - "AdminAlerts"
+    admin-only: true
+    description: "Teleport a player to another"
+    usage: "<from_player> <to_player>"
+    example: "Steve Alex"
+    execute-console: "tp %args-1% %args-2%"
+    reply: "🔀 Teleporting *%args-1%* to *%args-2%*."
