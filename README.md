@@ -48,16 +48,22 @@ wa-akg:
 
 #### 📡 Channels
 
+Channels are named WhatsApp destinations. You can add as many as you want — custom commands reference these names.
+
 ```yaml
 Channels:
   GlobalChat: "120363xxxxxx@g.us"
   AdminAlerts: "6281xxxxxx@s.whatsapp.net"
+  StaffChat: "120363yyyyyy@g.us"     # Add your own!
 ```
 
 | Channel | Description |
 |---|---|
 | `GlobalChat` | Two-way sync channel. In-game chat ⇆ WhatsApp. Also used for server lifecycle and player events. |
 | `AdminAlerts` | Receives player reports via `/wakg report`. |
+| *(Custom)* | Add any name you like. Use it in `commands.yml` via `target-channels` or `channels`. |
+
+> 💡 All channels listed here automatically become **two-way chat sync** channels.
 
 **How to find your JID:**
 
@@ -143,13 +149,14 @@ whatsapp-to-minecraft:
 #### Chat Format (WA → MC)
 
 ```yaml
-  chat-format: "&7[&aWhatsApp&7] &f%wa_name%&8: &7%message%"
+  chat-format: "&7[&a%channel%&7] &f%wa_name%&8: &7%message%"
 ```
 
 | Placeholder | Description |
 |---|---|
 | `%wa_name%` | The sender's WhatsApp display name |
 | `%message%` | The message content |
+| `%channel%` | The channel name from `config.yml` (e.g., `GlobalChat`, `AdminAlerts`) |
 
 ---
 
@@ -214,7 +221,8 @@ Commands are **auto-registered** to Minecraft at server start — no `plugin.yml
 minecraft-commands:
   reportwa:
     command: "reportwa"                    # Players type /reportwa
-    target-jid: "120363xxxxxx@g.us"        # Send to this WhatsApp group
+    target-channels:                       # Send to these channels (from config.yml)
+      - "AdminAlerts"
     format: "🚨 *REPORT*%nl%Reporter: *%player_name%*%nl%Suspect: *%args-1%*%nl%Reason: %args%"
     permission: ""                          # Leave "" for no restriction
     description: "Report a player"          # Shown in /wakg help
@@ -224,10 +232,27 @@ minecraft-commands:
     error-message: ""                       # Custom error (optional, auto-generated if empty)
 ```
 
+**Channel Routing Options:**
+
+```yaml
+# Send to ONE channel
+target-channels:
+  - "AdminAlerts"
+
+# Send to MULTIPLE channels
+target-channels:
+  - "GlobalChat"
+  - "AdminAlerts"
+
+# Send to ALL channels
+target-channels:
+  - "global"
+```
+
 | Field | Required | Description |
 |---|---|---|
 | `command` | ✅ | Command name (without `/`) |
-| `target-jid` | ✅ | WhatsApp JID to send to |
+| `target-channels` | ✅ | List of channel names from `config.yml`. Use `["global"]` for all channels. |
 | `format` | ✅ | Message format. Supports `%player_name%`, `%args%`, `%args-N%`, `%nl%`, PlaceholderAPI |
 | `execute-console` | ❌ | Console command to run. Supports `%args%`, `%args-N%` |
 | `permission` | ❌ | Bukkit permission. `""` = no restriction |
@@ -243,6 +268,8 @@ minecraft-commands:
 whatsapp-commands:
   giveapple:
     command: "giveapple"                    # Users type !giveapple in WhatsApp
+    channels:                               # Only respond from these channels
+      - "GlobalChat"
     admin-only: true
     description: "Give apples to a player"
     usage: "<player>"
@@ -251,9 +278,25 @@ whatsapp-commands:
     reply: "🍎 Giving 64 apples to *%args-1%*."
 ```
 
+**Channel Listening Options:**
+
+```yaml
+# Only respond from specific channel(s)
+channels:
+  - "GlobalChat"
+
+# Respond from ALL configured channels
+channels:
+  - "global"
+
+# Respond from ANY source (including DMs) — leave empty
+channels: []
+```
+
 | Field | Required | Description |
 |---|---|---|
 | `command` | ✅ | Trigger word (without prefix) |
+| `channels` | ❌ | List of channel names to listen from. `["global"]` = all channels, `[]` = any source. |
 | `admin-only` | ❌ | `true` = only admin JIDs can use |
 | `reply` | ❌ | Reply sent back to WhatsApp. Supports `%args%`, `%args-N%` |
 | `execute-console` | ❌ | Console command to run. Supports `%args%`, `%args-N%` |
@@ -360,11 +403,11 @@ Output: `target/WAKGCraft-x.x.x.jar`
 
 ## 📄 License
 
-This project is private and owned by [AiKei Group](https://aikeigroup.net/).
+This project is licensed under the [MIT License](LICENSE).
 
 ---
 
 ## 💬 Support
 
 - **WA-AKG Dashboard**: [wa-akg.aikeigroup.net](https://wa-akg.aikeigroup.net/)
-- **Issues**: Contact the development team
+- **GitHub Issues**: [github.com/mrifqidaffaaditya/WAKGCraft/issues](https://github.com/mrifqidaffaaditya/WAKGCraft/issues)
