@@ -52,10 +52,10 @@ public class WAKGCraft extends JavaPlugin {
 
         // Send Server Start Message
         if (configManager.getConfig().getBoolean("minecraft-to-whatsapp.server-start.enabled", false)) {
-            String targetJid = configManager.getConfig().getString("Channels.GlobalChat");
+            String targetJid = getChannelJid("GlobalChat", true, false);
             String format = configManager.getConfig().getString("minecraft-to-whatsapp.server-start.format", "Server Started");
             format = parsePlaceholders(format);
-            if (targetJid != null && !targetJid.isEmpty() && !targetJid.equals("ENTER_GLOBAL_CHAT_JID_HERE")) {
+            if (targetJid != null) {
                 waClient.sendMessage(targetJid, format);
             }
         }
@@ -71,10 +71,10 @@ public class WAKGCraft extends JavaPlugin {
 
         // Send Server Stop Message
         if (configManager.getConfig().getBoolean("minecraft-to-whatsapp.server-stop.enabled", false)) {
-            String targetJid = configManager.getConfig().getString("Channels.GlobalChat");
+            String targetJid = getChannelJid("GlobalChat", true, false);
             String format = configManager.getConfig().getString("minecraft-to-whatsapp.server-stop.format", "Server Stopped");
             format = parsePlaceholders(format);
-            if (targetJid != null && !targetJid.isEmpty() && !targetJid.equals("ENTER_GLOBAL_CHAT_JID_HERE")) {
+            if (targetJid != null) {
                 // Must be synchronous or use simple wait since plugin is disabling
                 try {
                     waClient.sendMessage(targetJid, format).join();
@@ -113,6 +113,17 @@ public class WAKGCraft extends JavaPlugin {
                 }
                 if (!permission.isEmpty()) {
                     pluginCommand.setPermission(permission);
+                    // Dynamically inject permission into Bukkit for LuckPerms visibility
+                    if (getServer().getPluginManager().getPermission(permission) == null) {
+                        try {
+                            org.bukkit.permissions.Permission perm = new org.bukkit.permissions.Permission(
+                                    permission, 
+                                    "Custom WAKGCraft permission for /" + cmdName, 
+                                    org.bukkit.permissions.PermissionDefault.OP
+                            );
+                            getServer().getPluginManager().addPermission(perm);
+                        } catch (Exception ignored) {}
+                    }
                 }
                 pluginCommand.setExecutor(new CustomCommandExecutor(this, key));
 
@@ -180,7 +191,12 @@ public class WAKGCraft extends JavaPlugin {
             if (name.equalsIgnoreCase("global")) {
                 // Return ALL channels
                 for (String key : channelsSection.getKeys(false)) {
-                    String jid = channelsSection.getString(key, "");
+                    String jid = "";
+                    if (channelsSection.isConfigurationSection(key)) {
+                        jid = channelsSection.getString(key + ".jid", "");
+                    } else {
+                        jid = channelsSection.getString(key, "");
+                    }
                     if (!jid.isEmpty() && !jid.startsWith("ENTER_")) {
                         jids.add(jid);
                     }
@@ -191,7 +207,12 @@ public class WAKGCraft extends JavaPlugin {
 
         // Resolve specific channel names
         for (String name : channelNames) {
-            String jid = channelsSection.getString(name, "");
+            String jid = "";
+            if (channelsSection.isConfigurationSection(name)) {
+                jid = channelsSection.getString(name + ".jid", "");
+            } else {
+                jid = channelsSection.getString(name, "");
+            }
             if (!jid.isEmpty() && !jid.startsWith("ENTER_")) {
                 jids.add(jid);
             } else {
@@ -199,6 +220,38 @@ public class WAKGCraft extends JavaPlugin {
             }
         }
         return jids;
+    }
+
+    /**
+     * Gets a channel's JID from config.yml and verifies its send/read permissions.
+     * 
+     * @param channelName The name of the channel
+     * @param checkSendToWa If true, requires the channel to have send-to-wa enabled
+     * @param checkReadFromWa If true, requires the channel to have read-from-wa enabled
+     * @return The JID if it exists and has required permissions, otherwise null.
+     */
+    public String getChannelJid(String channelName, boolean checkSendToWa, boolean checkReadFromWa) {
+        ConfigurationSection channelsSection = configManager.getConfig().getConfigurationSection("Channels");
+        if (channelsSection == null) return null;
+
+        String jid = "";
+        boolean sendToWa = true;
+        boolean readFromWa = true;
+
+        if (channelsSection.isConfigurationSection(channelName)) {
+            jid = channelsSection.getString(channelName + ".jid", "");
+            sendToWa = channelsSection.getBoolean(channelName + ".send-to-wa", true);
+            readFromWa = channelsSection.getBoolean(channelName + ".read-from-wa", true);
+        } else {
+            jid = channelsSection.getString(channelName, "");
+        }
+
+        if (checkSendToWa && !sendToWa) return null;
+        if (checkReadFromWa && !readFromWa) return null;
+
+        if (jid == null || jid.isEmpty() || jid.startsWith("ENTER_")) return null;
+        
+        return jid;
     }
 
     /**

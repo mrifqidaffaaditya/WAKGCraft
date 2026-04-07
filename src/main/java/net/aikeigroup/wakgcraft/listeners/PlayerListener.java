@@ -32,8 +32,8 @@ public class PlayerListener implements Listener {
     public void onChat(AsyncChatEvent event) {
         if (!plugin.getConfigManager().getConfig().getBoolean("minecraft-to-whatsapp.chat.enabled", false)) return;
 
-        String targetJid = plugin.getConfigManager().getConfig().getString("Channels.GlobalChat");
-        if (targetJid == null || targetJid.isEmpty() || targetJid.equals("ENTER_GLOBAL_CHAT_JID_HERE")) return;
+        String targetJid = plugin.getChannelJid("GlobalChat", true, false);
+        if (targetJid == null) return;
 
         String format = plugin.getConfigManager().getConfig().getString("minecraft-to-whatsapp.chat.format", "[%player_name%] %message%");
         
@@ -52,8 +52,8 @@ public class PlayerListener implements Listener {
     public void onJoin(PlayerJoinEvent event) {
         if (!plugin.getConfigManager().getConfig().getBoolean("minecraft-to-whatsapp.player-join.enabled", false)) return;
 
-        String targetJid = plugin.getConfigManager().getConfig().getString("Channels.GlobalChat");
-        if (targetJid == null || targetJid.isEmpty() || targetJid.equals("ENTER_GLOBAL_CHAT_JID_HERE")) return;
+        String targetJid = plugin.getChannelJid("GlobalChat", true, false);
+        if (targetJid == null) return;
 
         String format = plugin.getConfigManager().getConfig().getString("minecraft-to-whatsapp.player-join.format", "%player_name% joined the server");
         format = format.replace("%player_name%", event.getPlayer().getName());
@@ -66,8 +66,8 @@ public class PlayerListener implements Listener {
     public void onQuit(PlayerQuitEvent event) {
         if (!plugin.getConfigManager().getConfig().getBoolean("minecraft-to-whatsapp.player-quit.enabled", false)) return;
 
-        String targetJid = plugin.getConfigManager().getConfig().getString("Channels.GlobalChat");
-        if (targetJid == null || targetJid.isEmpty() || targetJid.equals("ENTER_GLOBAL_CHAT_JID_HERE")) return;
+        String targetJid = plugin.getChannelJid("GlobalChat", true, false);
+        if (targetJid == null) return;
 
         String format = plugin.getConfigManager().getConfig().getString("minecraft-to-whatsapp.player-quit.format", "%player_name% left the server");
         format = format.replace("%player_name%", event.getPlayer().getName());
@@ -80,8 +80,8 @@ public class PlayerListener implements Listener {
     public void onDeath(PlayerDeathEvent event) {
         if (!plugin.getConfigManager().getConfig().getBoolean("minecraft-to-whatsapp.player-death.enabled", false)) return;
 
-        String targetJid = plugin.getConfigManager().getConfig().getString("Channels.GlobalChat");
-        if (targetJid == null || targetJid.isEmpty() || targetJid.equals("ENTER_GLOBAL_CHAT_JID_HERE")) return;
+        String targetJid = plugin.getChannelJid("GlobalChat", true, false);
+        if (targetJid == null) return;
 
         String deathMsg = "";
         if (event.deathMessage() != null) {
@@ -102,8 +102,8 @@ public class PlayerListener implements Listener {
         
         if (!plugin.getConfigManager().getConfig().getBoolean("minecraft-to-whatsapp.advancement.enabled", false)) return;
 
-        String targetJid = plugin.getConfigManager().getConfig().getString("Channels.GlobalChat");
-        if (targetJid == null || targetJid.isEmpty() || targetJid.equals("ENTER_GLOBAL_CHAT_JID_HERE")) return;
+        String targetJid = plugin.getChannelJid("GlobalChat", true, false);
+        if (targetJid == null) return;
 
         String advName = event.getAdvancement().getKey().getKey();
         if (event.getAdvancement().getDisplay() != null && event.getAdvancement().getDisplay().title() != null) {

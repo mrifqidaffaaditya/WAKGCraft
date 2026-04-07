@@ -52,9 +52,14 @@ Channels are named WhatsApp destinations. You can add as many as you want — cu
 
 ```yaml
 Channels:
-  GlobalChat: "120363xxxxxx@g.us"
-  AdminAlerts: "6281xxxxxx@s.whatsapp.net"
-  StaffChat: "120363yyyyyy@g.us"     # Add your own!
+  GlobalChat:
+    jid: "120363xxxxxx@g.us"
+    send-to-wa: true
+    read-from-wa: true
+  AdminAlerts:
+    jid: "6281xxxxxx@s.whatsapp.net"
+    send-to-wa: true
+    read-from-wa: false
 ```
 
 | Channel | Description |
@@ -145,6 +150,25 @@ whatsapp-to-minecraft:
 1. Make sure the `port` (default `8080`) is **port-forwarded** or accessible.
 2. Go to **WA-AKG Dashboard → Sessions → Webhooks**.
 3. Add URL: `http://YOUR_SERVER_IP:8080/webhook`
+
+  # Format for messages arriving from WhatsApp into Minecraft.
+
+#### Built-In Commands Configuration
+
+You can customize the aliases, enable/disable, and fully modify the structural formatting of built-in commands:
+
+```yaml
+whatsapp-to-minecraft:
+  built-in-commands:
+    list:
+      enabled: true
+      command: "list"
+      format:
+        header: "👥 *Online Players (%online_count%/%max_players%)*%nl%"
+        player-item: "- %player_name%%nl%"
+        empty: "No players online"
+    # ... format strings for status, whitelist, execute, and help
+```
 
 #### Chat Format (WA → MC)
 

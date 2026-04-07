@@ -19,28 +19,40 @@ public class WAKGCommand implements CommandExecutor {
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
-        if (!sender.hasPermission("wakgcraft.admin")) {
-            sender.sendMessage(plugin.getConfigManager().getMessage("no-permission"));
-            return true;
-        }
-
-        if (args.length == 0) {
+        if (args.length == 0 || args[0].equalsIgnoreCase("help")) {
             sendHelp(sender);
             return true;
         }
 
+        // Apply Cooldown if not skipping and is player
+        if (sender instanceof Player) {
+            Player p = (Player) sender;
+            if (!p.hasPermission("wakgcraft.bypasscooldown")) {
+                int cooldownSecs = plugin.getConfigManager().getConfig().getInt("general.command-cooldown", 0);
+                if (net.aikeigroup.wakgcraft.utils.CooldownManager.isOnCooldown(p.getUniqueId().toString(), cooldownSecs)) {
+                    long remaining = net.aikeigroup.wakgcraft.utils.CooldownManager.getRemainingCooldown(p.getUniqueId().toString());
+                    String msg = plugin.getConfigManager().getConfig().getString("general.cooldown-message", "⏳ Please wait %time%s before using commands again!");
+                    p.sendMessage(ChatColor.translateAlternateColorCodes('&', msg.replace("%time%", String.valueOf(remaining))));
+                    return true;
+                }
+            }
+        }
+
         if (args[0].equalsIgnoreCase("reload")) {
+            if (!sender.hasPermission("wakgcraft.admin")) {
+                sender.sendMessage(plugin.getConfigManager().getMessage("no-permission"));
+                return true;
+            }
             plugin.fullReload();
             sender.sendMessage(plugin.getConfigManager().getMessage("reloaded"));
             return true;
         }
 
-        if (args[0].equalsIgnoreCase("help")) {
-            sendHelp(sender);
-            return true;
-        }
-
         if (args[0].equalsIgnoreCase("send")) {
+            if (!sender.hasPermission("wakgcraft.admin")) {
+                sender.sendMessage(plugin.getConfigManager().getMessage("no-permission"));
+                return true;
+            }
             if (args.length < 3) {
                 sender.sendMessage(plugin.getConfigManager().getMessage("usage-send"));
                 return true;
@@ -84,9 +96,9 @@ public class WAKGCommand implements CommandExecutor {
 
             String targetPlayer = args[1];
             String reason = String.join(" ", java.util.Arrays.copyOfRange(args, 2, args.length));
-            String adminJid = plugin.getConfigManager().getConfig().getString("Channels.AdminAlerts");
+            String adminJid = plugin.getChannelJid("AdminAlerts", true, false);
 
-            if (adminJid != null && !adminJid.isEmpty() && !adminJid.equals("ENTER_ADMIN_GROUP_JID_HERE")) {
+            if (adminJid != null) {
                 String locationStr = sender instanceof Player ? 
                     ((Player) sender).getLocation().getBlockX() + ", " + 
                     ((Player) sender).getLocation().getBlockY() + ", " + 
@@ -134,7 +146,7 @@ public class WAKGCommand implements CommandExecutor {
         ConfigurationSection mcCmds = plugin.getConfigManager().getCommandsConfig().getConfigurationSection("minecraft-commands");
         if (mcCmds != null && !mcCmds.getKeys(false).isEmpty()) {
             sender.sendMessage("");
-            sender.sendMessage(ChatColor.GOLD + "  Custom Commands:");
+            sender.sendMessage(ChatColor.GOLD + "  Custom In-Game Commands:");
             
             for (String key : mcCmds.getKeys(false)) {
                 String cmdName = mcCmds.getString(key + ".command", key);
@@ -146,6 +158,50 @@ public class WAKGCommand implements CommandExecutor {
                 if (isAdmin || permission.isEmpty() || sender.hasPermission(permission)) {
                     String cmdDisplay = "/" + cmdName + (!usage.isEmpty() ? " " + usage : "");
                     sender.sendMessage(ChatColor.YELLOW + "  " + cmdDisplay + " " + ChatColor.GRAY + "- " + description);
+                }
+            }
+        }
+        
+        // WhatsApp commands from commands.yml
+        ConfigurationSection waCmds = plugin.getConfigManager().getCommandsConfig().getConfigurationSection("whatsapp-commands");
+        ConfigurationSection builtIn = plugin.getConfigManager().getConfig().getConfigurationSection("whatsapp-to-minecraft.built-in-commands");
+        String prefix = plugin.getConfigManager().getConfig().getString("whatsapp-to-minecraft.command-prefix", "!");
+
+        if ((waCmds != null && !waCmds.getKeys(false).isEmpty()) || builtIn != null) {
+            sender.sendMessage("");
+            sender.sendMessage(ChatColor.GOLD + "  WhatsApp Custom Commands:");
+            
+            if (builtIn != null) {
+                if (builtIn.getBoolean("list.enabled", true)) {
+                    sender.sendMessage(ChatColor.GREEN + "  " + prefix + builtIn.getString("list.command", "list") + ChatColor.GRAY + " - View online players" + ChatColor.DARK_GRAY + " (Built-in)");
+                }
+                if (builtIn.getBoolean("status.enabled", true)) {
+                    sender.sendMessage(ChatColor.GREEN + "  " + prefix + builtIn.getString("status.command", "status") + ChatColor.GRAY + " - View server status" + ChatColor.DARK_GRAY + " (Built-in)");
+                }
+                if (builtIn.getBoolean("help.enabled", true)) {
+                    sender.sendMessage(ChatColor.GREEN + "  " + prefix + builtIn.getString("help.command", "help") + ChatColor.GRAY + " - Show help in WhatsApp" + ChatColor.DARK_GRAY + " (Built-in)");
+                }
+                if (isAdmin) {
+                    if (builtIn.getBoolean("whitelist.enabled", true)) {
+                        sender.sendMessage(ChatColor.GREEN + "  " + prefix + builtIn.getString("whitelist.command", "whitelist") + " <add|remove> <player> " + ChatColor.GRAY + "- Manage whitelist" + ChatColor.RED + " [Admin]" + ChatColor.DARK_GRAY + " (Built-in)");
+                    }
+                    if (builtIn.getBoolean("execute.enabled", true)) {
+                        sender.sendMessage(ChatColor.GREEN + "  " + prefix + builtIn.getString("execute.command", "execute") + " <command> " + ChatColor.GRAY + "- Run console command" + ChatColor.RED + " [Admin]" + ChatColor.DARK_GRAY + " (Built-in)");
+                    }
+                }
+            }
+
+            if (waCmds != null) {
+                for (String key : waCmds.getKeys(false)) {
+                    boolean adminOnly = waCmds.getBoolean(key + ".admin-only", false);
+                    if (adminOnly && !isAdmin) continue;
+
+                    String cmdName = waCmds.getString(key + ".command", key);
+                    String description = waCmds.getString(key + ".description", "No description");
+                    String usage = waCmds.getString(key + ".usage", "");
+                    
+                    String cmdDisplay = prefix + cmdName + (!usage.isEmpty() ? " " + usage : "");
+                    sender.sendMessage(ChatColor.GREEN + "  " + cmdDisplay + " " + ChatColor.GRAY + "- " + description + (adminOnly ? ChatColor.RED + " [Admin]" : ""));
                 }
             }
         }

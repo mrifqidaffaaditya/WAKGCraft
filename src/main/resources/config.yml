@@ -39,6 +39,14 @@ plugin-messages:
   sent-failed: "&cFailed to send message: %error%"
 
 # =====================================================
+# GENERAL CONFIGURATION
+# =====================================================
+general:
+  # Cooldown applied to all commands from Minecraft and WhatsApp (in seconds)
+  command-cooldown: 5
+  cooldown-message: "&c⏳ Please wait %time%s before using commands again!"
+
+# =====================================================
 # CHANNELS (Two-Way Linking)
 # =====================================================
 # This maps Minecraft concepts to WhatsApp Groups or Numbers.
@@ -51,11 +59,17 @@ Channels:
   # The main chat channel. In-game chat goes here, and messages from here go in-game.
   # Also used for server-start, server-stop, player-join, player-quit, etc.
   # Leave empty ("") to disable all two-way chat features.
-  GlobalChat: "ENTER_GLOBAL_CHAT_JID_HERE"
+  GlobalChat:
+    jid: "ENTER_GLOBAL_CHAT_JID_HERE"
+    send-to-wa: true
+    read-from-wa: true
 
   # Admin Alert Channel. Used for highly sensitive alerts.
   # When a player types /wakg report, it goes directly to this WhatsApp Number/Group!
-  AdminAlerts: "ENTER_ADMIN_GROUP_JID_HERE"
+  AdminAlerts:
+    jid: "ENTER_ADMIN_GROUP_JID_HERE"
+    send-to-wa: true
+    read-from-wa: false
 
 # =====================================================
 # MINECRAFT TO WHATSAPP (Minecraft -> WA)
@@ -137,6 +151,46 @@ whatsapp-to-minecraft:
 
   # Prefix needed to run commands from WhatsApp (e.g., !list, !status)
   command-prefix: "!"
+
+  # Configure Built-In Commands (WhatsApp -> Minecraft)
+  # Change the command name to translate it, or set enabled to false to disable it entirely
+  built-in-commands:
+    list:
+      enabled: true
+      command: "list"
+      # channels: ["GlobalChat"] # Optional: restrict to specific channels
+      format:
+        header: "👥 *Online Players (%online_count%/%max_players%)*%nl%"
+        player-item: "- %player_name%%nl%"
+        empty: "No players online"
+    status:
+      enabled: true
+      command: "status"
+      # channels: []
+      format: "📊 *Server Status*%nl%• TPS: *%tps%*%nl%• Players: *%online_count%/%max_players%*%nl%• Memory: *%used_memory%MB / %max_memory%MB*"
+    whitelist:
+      enabled: true
+      command: "whitelist"
+      # channels: []
+      format:
+        executing: "✅ Whitelist command executing for: %player%"
+        usage: "❌ Usage: %prefix%whitelist <add|remove> <player>"
+        no-permission: "❌ You do not have permission."
+    execute:
+      enabled: true
+      command: "execute"
+      # channels: []
+      format:
+        success: "⚙️ Command execution dispatched."
+        failed: "⚙️ Command execution failed."
+        no-permission: "❌ You do not have permission to run console commands."
+    help:
+      enabled: true
+      command: "help"
+      # channels: []
+      format:
+        header: "📋 *WAKGCraft Commands*%nl%━━━━━━━━━━━━━━━%nl%"
+        footer: "%nl%━━━━━━━━━━━━━━━"
 
   # Format for messages arriving from WhatsApp into Minecraft.
   # Supports Minecraft color codes using '&'.

@@ -5,6 +5,16 @@ api-version: '1.21'
 depend: [PlaceholderAPI]
 description: A plugin to integrate WA-AKG with Minecraft!
 authors: [KeiDev, AI]
+permissions:
+  wakgcraft.admin:
+    description: Allows access to WAKGCraft admin commands (reload, send)
+    default: op
+  wakgcraft.report:
+    description: Allows reporting a player to WA admins
+    default: true
+  wakgcraft.bypasscooldown:
+    description: Bypass command cooldown restrictions
+    default: op
 commands:
   wakgcraft:
     description: Main command for WAKGCraft

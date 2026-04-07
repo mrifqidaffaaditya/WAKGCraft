@@ -41,6 +41,20 @@ public class CustomCommandExecutor implements CommandExecutor {
             return true;
         }
 
+        // Apply Cooldown if not skipping and is player
+        if (sender instanceof Player) {
+            Player p = (Player) sender;
+            if (!p.hasPermission("wakgcraft.bypasscooldown")) {
+                int cooldownSecs = plugin.getConfigManager().getConfig().getInt("general.command-cooldown", 0);
+                if (net.aikeigroup.wakgcraft.utils.CooldownManager.isOnCooldown(p.getUniqueId().toString(), cooldownSecs)) {
+                    long remaining = net.aikeigroup.wakgcraft.utils.CooldownManager.getRemainingCooldown(p.getUniqueId().toString());
+                    String msg = plugin.getConfigManager().getConfig().getString("general.cooldown-message", "⏳ Please wait %time%s before using commands again!");
+                    p.sendMessage(ChatColor.translateAlternateColorCodes('&', msg.replace("%time%", String.valueOf(remaining))));
+                    return true;
+                }
+            }
+        }
+
         // Resolve target channels to JIDs
         List<String> targetChannels = cmdSection.getStringList("target-channels");
         List<String> targetJids = plugin.resolveChannelJids(targetChannels);

@@ -143,18 +143,60 @@ public class WebhookServer {
             
             // Process Commands (e.g., !list)
             if (text.startsWith(prefix)) {
+                // Rate Limiting (Skip if admin)
+                boolean isAdmin = plugin.getConfigManager().getConfig().getStringList("whatsapp-to-minecraft.admin-jids").contains(remoteJid) || 
+                                  plugin.getConfigManager().getConfig().getStringList("whatsapp-to-minecraft.admin-jids").contains(participant);
+                
+                if (!isAdmin) {
+                    int cooldownSecs = plugin.getConfigManager().getConfig().getInt("general.command-cooldown", 0);
+                    if (net.aikeigroup.wakgcraft.utils.CooldownManager.isOnCooldown(remoteJid, cooldownSecs)) {
+                        long remaining = net.aikeigroup.wakgcraft.utils.CooldownManager.getRemainingCooldown(remoteJid);
+                        String formatMsg = plugin.getConfigManager().getConfig().getString("general.cooldown-message", "⏳ Please wait %time%s before using commands again!");
+                        plugin.getWaClient().sendMessage(remoteJid, formatMsg.replace("%time%", String.valueOf(remaining)));
+                        return; // Block command
+                    }
+                }
+
                 String[] args = text.substring(prefix.length()).split(" ");
                 String cmd = args[0].toLowerCase();
                 
-                if (cmd.equals("list")) {
+                ConfigurationSection builtIn = plugin.getConfigManager().getConfig().getConfigurationSection("whatsapp-to-minecraft.built-in-commands");
+
+                String cmdList      = builtIn != null ? builtIn.getString("list.command", "list").toLowerCase() : "list";
+                boolean enabledList = builtIn == null || builtIn.getBoolean("list.enabled", true);
+                String cmdStatus      = builtIn != null ? builtIn.getString("status.command", "status").toLowerCase() : "status";
+                boolean enabledStatus = builtIn == null || builtIn.getBoolean("status.enabled", true);
+                String cmdWhitelist      = builtIn != null ? builtIn.getString("whitelist.command", "whitelist").toLowerCase() : "whitelist";
+                boolean enabledWhitelist = builtIn == null || builtIn.getBoolean("whitelist.enabled", true);
+                String cmdExecute      = builtIn != null ? builtIn.getString("execute.command", "execute").toLowerCase() : "execute";
+                boolean enabledExecute = builtIn == null || builtIn.getBoolean("execute.enabled", true);
+                String cmdHelp      = builtIn != null ? builtIn.getString("help.command", "help").toLowerCase() : "help";
+                boolean enabledHelp = builtIn == null || builtIn.getBoolean("help.enabled", true);
+
+                if (enabledList && cmd.equals(cmdList)) {
+                    java.util.List<String> allowed = builtIn != null ? builtIn.getStringList("list.channels") : new java.util.ArrayList<>();
+                    if (!allowed.isEmpty() && !plugin.isJidInChannels(remoteJid, allowed)) return;
+
                     int count = Bukkit.getOnlinePlayers().size();
-                    StringBuilder sb = new StringBuilder("👥 *Online Players (" + count + "/" + Bukkit.getMaxPlayers() + ")*\n");
-                    Bukkit.getOnlinePlayers().forEach(p -> sb.append("- ").append(p.getName()).append("\n"));
+                    String headerFormat = builtIn != null ? builtIn.getString("list.format.header", "👥 *Online Players (%online_count%/%max_players%)*%nl%") : "👥 *Online Players (%online_count%/%max_players%)*%nl%";
+                    String header = headerFormat.replace("%online_count%", String.valueOf(count)).replace("%max_players%", String.valueOf(Bukkit.getMaxPlayers())).replace("%nl%", "\n");
+                    StringBuilder sb = new StringBuilder(header);
+                    
+                    String playerFormat = builtIn != null ? builtIn.getString("list.format.player-item", "- %player_name%%nl%") : "- %player_name%%nl%";
+                    Bukkit.getOnlinePlayers().forEach(p -> sb.append(playerFormat.replace("%player_name%", p.getName()).replace("%nl%", "\n")));
+                    
+                    if (count == 0) {
+                        String emptyFormat = builtIn != null ? builtIn.getString("list.format.empty", "No players online") : "No players online";
+                        sb.append(emptyFormat.replace("%nl%", "\n"));
+                    }
                     plugin.getWaClient().sendMessage(remoteJid, sb.toString());
                     return;
                 }
                 
-                if (cmd.equals("status")) {
+                if (enabledStatus && cmd.equals(cmdStatus)) {
+                    java.util.List<String> allowed = builtIn != null ? builtIn.getStringList("status.channels") : new java.util.ArrayList<>();
+                    if (!allowed.isEmpty() && !plugin.isJidInChannels(remoteJid, allowed)) return;
+
                     double[] tps = Bukkit.getTPS();
                     String tpsStr = String.format("%.2f", tps[0]);
                     long maxMemory = Runtime.getRuntime().maxMemory() / 1048576;
@@ -162,15 +204,22 @@ public class WebhookServer {
                     long freeMemory = Runtime.getRuntime().freeMemory() / 1048576;
                     int count = Bukkit.getOnlinePlayers().size();
                     
-                    String statusMsg = "📊 *Server Status*\n" +
-                                   "• TPS: *" + tpsStr + "*\n" +
-                                   "• Players: *" + count + "/" + Bukkit.getMaxPlayers() + "*\n" +
-                                   "• Memory: *" + (allocatedMemory - freeMemory) + "MB / " + maxMemory + "MB*";
+                    String format = builtIn != null ? builtIn.getString("status.format", "📊 *Server Status*%nl%• TPS: *%tps%*%nl%• Players: *%online_count%/%max_players%*%nl%• Memory: *%used_memory%MB / %max_memory%MB*") : "📊 *Server Status*%nl%• TPS: *%tps%*%nl%• Players: *%online_count%/%max_players%*%nl%• Memory: *%used_memory%MB / %max_memory%MB*";
+                    
+                    String statusMsg = format.replace("%tps%", tpsStr)
+                                             .replace("%online_count%", String.valueOf(count))
+                                             .replace("%max_players%", String.valueOf(Bukkit.getMaxPlayers()))
+                                             .replace("%used_memory%", String.valueOf(allocatedMemory - freeMemory))
+                                             .replace("%max_memory%", String.valueOf(maxMemory))
+                                             .replace("%nl%", "\n");
                     plugin.getWaClient().sendMessage(remoteJid, statusMsg);
                     return;
                 }
 
-                if (cmd.equals("whitelist")) {
+                if (enabledWhitelist && cmd.equals(cmdWhitelist)) {
+                    java.util.List<String> allowed = builtIn != null ? builtIn.getStringList("whitelist.channels") : new java.util.ArrayList<>();
+                    if (!allowed.isEmpty() && !plugin.isJidInChannels(remoteJid, allowed)) return;
+
                     List<String> admins = plugin.getConfigManager().getConfig().getStringList("whatsapp-to-minecraft.admin-jids");
                     if (admins.contains(participant) || admins.contains(remoteJid)) {
                         if (args.length >= 3) {
@@ -178,33 +227,45 @@ public class WebhookServer {
                             String player = args[2];
                             Bukkit.getScheduler().runTask(plugin, () -> {
                                 Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "whitelist " + action + " " + player);
-                                plugin.getWaClient().sendMessage(remoteJid, "✅ Whitelist command executing for: " + player);
+                                String execFormat = builtIn != null ? builtIn.getString("whitelist.format.executing", "✅ Whitelist command executing for: %player%") : "✅ Whitelist command executing for: %player%";
+                                plugin.getWaClient().sendMessage(remoteJid, execFormat.replace("%player%", player).replace("%nl%", "\n"));
                             });
                         } else {
-                            plugin.getWaClient().sendMessage(remoteJid, "❌ Usage: !whitelist <add|remove> <player>");
+                            String usageFormat = builtIn != null ? builtIn.getString("whitelist.format.usage", "❌ Usage: %prefix%whitelist <add|remove> <player>") : "❌ Usage: %prefix%whitelist <add|remove> <player>";
+                            plugin.getWaClient().sendMessage(remoteJid, usageFormat.replace("%prefix%", prefix).replace("%nl%", "\n"));
                         }
                     } else {
-                        plugin.getWaClient().sendMessage(remoteJid, "❌ You do not have permission.");
+                        String permFormat = builtIn != null ? builtIn.getString("whitelist.format.no-permission", "❌ You do not have permission.") : "❌ You do not have permission.";
+                        plugin.getWaClient().sendMessage(remoteJid, permFormat.replace("%nl%", "\n"));
                     }
                     return;
                 }
                 
-                if (cmd.equals("execute")) {
+                if (enabledExecute && cmd.equals(cmdExecute)) {
+                    java.util.List<String> allowed = builtIn != null ? builtIn.getStringList("execute.channels") : new java.util.ArrayList<>();
+                    if (!allowed.isEmpty() && !plugin.isJidInChannels(remoteJid, allowed)) return;
+
                     List<String> admins = plugin.getConfigManager().getConfig().getStringList("whatsapp-to-minecraft.admin-jids");
                     
                     if (admins.contains(participant) || admins.contains(remoteJid)) {
                         String mcCommand = text.substring(prefix.length() + cmd.length()).trim();
                         Bukkit.getScheduler().runTask(plugin, () -> {
                             boolean success = Bukkit.dispatchCommand(Bukkit.getConsoleSender(), mcCommand);
-                            plugin.getWaClient().sendMessage(remoteJid, "⚙️ Command execution " + (success ? "dispatched." : "failed."));
+                            String successFormat = builtIn != null ? builtIn.getString("execute.format.success", "⚙️ Command execution dispatched.") : "⚙️ Command execution dispatched.";
+                            String failedFormat = builtIn != null ? builtIn.getString("execute.format.failed", "⚙️ Command execution failed.") : "⚙️ Command execution failed.";
+                            plugin.getWaClient().sendMessage(remoteJid, (success ? successFormat : failedFormat).replace("%nl%", "\n"));
                         });
                     } else {
-                        plugin.getWaClient().sendMessage(remoteJid, "❌ You do not have permission to run console commands.");
+                        String permFormat = builtIn != null ? builtIn.getString("execute.format.no-permission", "❌ You do not have permission to run console commands.") : "❌ You do not have permission to run console commands.";
+                        plugin.getWaClient().sendMessage(remoteJid, permFormat.replace("%nl%", "\n"));
                     }
                     return;
                 }
 
-                if (cmd.equals("help")) {
+                if (enabledHelp && cmd.equals(cmdHelp)) {
+                    java.util.List<String> allowed = builtIn != null ? builtIn.getStringList("help.channels") : new java.util.ArrayList<>();
+                    if (!allowed.isEmpty() && !plugin.isJidInChannels(remoteJid, allowed)) return;
+
                     handleHelpCommand(remoteJid, participant);
                     return;
                 }
@@ -275,8 +336,8 @@ public class WebhookServer {
             ConfigurationSection channelsSection = plugin.getConfigManager().getConfig().getConfigurationSection("Channels");
             if (channelsSection != null) {
                 for (String channelKey : channelsSection.getKeys(false)) {
-                    String channelJid = channelsSection.getString(channelKey, "");
-                    if (!channelJid.isEmpty() && !channelJid.startsWith("ENTER_") && remoteJid.equals(channelJid)) {
+                    String channelJid = plugin.getChannelJid(channelKey, false, true);
+                    if (channelJid != null && remoteJid.equals(channelJid)) {
                         String format = plugin.getConfigManager().getConfig().getString("whatsapp-to-minecraft.chat-format", "&7[&aWA&7] &f%wa_name%&8: &7%message%");
                         String finalMessage = format.replace("%wa_name%", pushName).replace("%message%", text).replace("%channel%", channelKey);
                         finalMessage = ChatColor.translateAlternateColorCodes('&', finalMessage);
@@ -294,18 +355,30 @@ public class WebhookServer {
             boolean isAdmin = admins.contains(participant) || admins.contains(remoteJid);
             String prefix = plugin.getConfigManager().getConfig().getString("whatsapp-to-minecraft.command-prefix", "!");
             
-            StringBuilder help = new StringBuilder("📋 *WAKGCraft Commands*\n━━━━━━━━━━━━━━━\n");
+            ConfigurationSection builtIn = plugin.getConfigManager().getConfig().getConfigurationSection("whatsapp-to-minecraft.built-in-commands");
+            String headerFormat = builtIn != null ? builtIn.getString("help.format.header", "📋 *WAKGCraft Commands*%nl%━━━━━━━━━━━━━━━%nl%") : "📋 *WAKGCraft Commands*%nl%━━━━━━━━━━━━━━━%nl%";
+            StringBuilder help = new StringBuilder(headerFormat.replace("%nl%", "\n"));
             
             // Built-in commands
-            help.append("\n*Built-in Commands:*\n");
-            help.append(prefix).append("list - View online players\n");
-            help.append(prefix).append("status - View server status\n");
-            help.append(prefix).append("help - Show this help\n");
+            help.append("*Built-in Commands:*\n");
+            if (builtIn == null || builtIn.getBoolean("list.enabled", true)) {
+                help.append(prefix).append(builtIn != null ? builtIn.getString("list.command", "list") : "list").append(" - View online players\n");
+            }
+            if (builtIn == null || builtIn.getBoolean("status.enabled", true)) {
+                help.append(prefix).append(builtIn != null ? builtIn.getString("status.command", "status") : "status").append(" - View server status\n");
+            }
+            if (builtIn == null || builtIn.getBoolean("help.enabled", true)) {
+                help.append(prefix).append(builtIn != null ? builtIn.getString("help.command", "help") : "help").append(" - Show this help\n");
+            }
             
             if (isAdmin) {
                 help.append("\n*Admin Commands:*\n");
-                help.append(prefix).append("execute <command> - Run console command\n");
-                help.append(prefix).append("whitelist <add|remove> <player> - Manage whitelist\n");
+                if (builtIn == null || builtIn.getBoolean("execute.enabled", true)) {
+                    help.append(prefix).append(builtIn != null ? builtIn.getString("execute.command", "execute") : "execute").append(" <command> - Run console command\n");
+                }
+                if (builtIn == null || builtIn.getBoolean("whitelist.enabled", true)) {
+                    help.append(prefix).append(builtIn != null ? builtIn.getString("whitelist.command", "whitelist") : "whitelist").append(" <add|remove> <player> - Manage whitelist\n");
+                }
             }
             
             // Custom commands
@@ -317,7 +390,7 @@ public class WebhookServer {
                     if (adminOnly && !isAdmin) continue;
                     
                     if (!headerShown) {
-                        help.append("\n*Custom Commands:*\n");
+                        help.append("\n*Custom WhatsApp Commands:*\n");
                         headerShown = true;
                     }
                     
@@ -332,8 +405,27 @@ public class WebhookServer {
                     help.append("\n");
                 }
             }
+
+            // Custom Minecraft commands
+            ConfigurationSection mcCmds = plugin.getConfigManager().getCommandsConfig().getConfigurationSection("minecraft-commands");
+            if (mcCmds != null && !mcCmds.getKeys(false).isEmpty()) {
+                help.append("\n*Custom In-Game Commands:*\n");
+                for (String keyName : mcCmds.getKeys(false)) {
+                    String permission = mcCmds.getString(keyName + ".permission", "");
+                    String cmdName = mcCmds.getString(keyName + ".command", keyName);
+                    String description = mcCmds.getString(keyName + ".description", "No description");
+                    String usage = mcCmds.getString(keyName + ".usage", "");
+                    
+                    help.append("/").append(cmdName);
+                    if (!usage.isEmpty()) help.append(" ").append(usage);
+                    help.append(" - ").append(description);
+                    if (!permission.isEmpty()) help.append(" 🔒"); // Requires permission
+                    help.append("\n");
+                }
+            }
             
-            help.append("\n━━━━━━━━━━━━━━━");
+            String footerFormat = builtIn != null ? builtIn.getString("help.format.footer", "%nl%━━━━━━━━━━━━━━━") : "%nl%━━━━━━━━━━━━━━━";
+            help.append(footerFormat.replace("%nl%", "\n"));
             plugin.getWaClient().sendMessage(remoteJid, help.toString());
         }
 
